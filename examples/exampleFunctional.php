@@ -7,14 +7,15 @@ $username = ""; // Your snapchat username
 $password = ""; // Your snapchat password
 $gEmail   = ""; // Gmail account
 $gPasswd  = ""; // Gmail account password
-$debug = false; // Set this to true if you want to see all outgoing requests and responses from server
+$debug    = false; // Set this to true if you want to see all outgoing requests and responses from server
+$cli 	    = false; // Set this to true to get progress information printed out via echo (only use when running in a terminal).
 ////////////////////////////////
 
 
 $imagePath = ""; // URL or local path to a media file (image or video)
 $sendTo = array();
 
-$snapchat = new Snapchat($username, $gEmail, $gPasswd, $debug);
+$snapchat = new Snapchat($username, $gEmail, $gPasswd, $debug, $cli);
 
 //Login to Snapchat with your username and password
 $snapchat->login($password);
