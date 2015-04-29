@@ -924,7 +924,7 @@ class Snapchat extends SnapchatAgent {
 				$from = $snap->sender;
 				$time = $snap->sent;
 
-				echo "$current from %total";
+				echo "$current from %total\n";
 				$this->getMedia($id, $from, $time, $subdir);
 			}
 		}
@@ -2184,7 +2184,7 @@ class Snapchat extends SnapchatAgent {
 
 		if($save)
 		{
-			$total = count($snaps);
+			$total = count($friendStories);
 			$current = 0;
 
 			foreach($friendStories as $story)
@@ -2197,7 +2197,7 @@ class Snapchat extends SnapchatAgent {
 				$mediaIV = $story->media_iv;
 				$timestamp = $story->timestamp;
 
-				echo "$current from $total";
+				echo "$current from $total\n";
 				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
