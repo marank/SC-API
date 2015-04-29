@@ -2300,21 +2300,15 @@ class Snapchat extends SnapchatAgent {
 				{
 					foreach ($result as &$value)
 					{
-						if(!file_exists($file))
-						{
-							$this->writeToFile($file, $value);
-						}
+						$this->writeToFile($file, $value);
 					}
 				}
 				else
 				{
-					if(!file_exists($file))
-					{
-						$this->writeToFile($file, $result);
-					}
+					$this->writeToFile($file, $result);
 				}
 			}
-			
+
 			return $result;
 		}
 
