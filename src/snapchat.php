@@ -270,7 +270,7 @@ class Snapchat extends SnapchatAgent {
 	 *   The data returned by the service or FALSE if the request failed.
 	 *   Generally, returns the same result as self::getUpdates().
 	 */
-	public function login($password, $force = FALSE)
+	public function login($password, $force = false, $noOpenAppEvent = false)
 	{
 		$do = ($force && file_exists(__DIR__ . "/auth-$this->username.dat")) ? 1 : 0;
 
@@ -337,7 +337,7 @@ class Snapchat extends SnapchatAgent {
 
 				return $result;
 		} else {
-				$this->openAppEvent();
+				if (!$noOpenAppEvent) $this->openAppEvent();
 		}
 	}
 
@@ -914,12 +914,17 @@ class Snapchat extends SnapchatAgent {
 
 		if($save)
 		{
+			$total = count($snaps);
+			$current = 0;
 			foreach($snaps as $snap)
 			{
+				$current += 1;
+
 				$id = $snap->id;
 				$from = $snap->sender;
 				$time = $snap->sent;
 
+				echo "$current from %total";
 				$this->getMedia($id, $from, $time, $subdir);
 			}
 		}
@@ -2179,14 +2184,20 @@ class Snapchat extends SnapchatAgent {
 
 		if($save)
 		{
+			$total = count($snaps);
+			$current = 0;
+
 			foreach($friendStories as $story)
 			{
+				$current += 1;
+
 				$id = $story->media_id;
 				$from = $story->username;
 				$mediaKey = $story->media_key;
 				$mediaIV = $story->media_iv;
 				$timestamp = $story->timestamp;
 
+				echo "$current from $total";
 				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
