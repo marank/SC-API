@@ -57,6 +57,7 @@ class Snapchat extends SnapchatAgent {
 	protected $chat_auth_token;
 	protected $username;
 	protected $debug;
+	protected $cli;
 	protected $gEmail;
 	protected $gPasswd;
 
@@ -70,12 +71,13 @@ class Snapchat extends SnapchatAgent {
 	 * @param string $password
 	 *   The password associated with the username, if logging in.
 	 */
-	public function __construct($username = NULL, $gEmail, $gPasswd, $debug = FALSE)
+	public function __construct($username = NULL, $gEmail, $gPasswd, $debug = FALSE, $cli = false)
 	{
 		$this->username = $username;
 		$this->debug = $debug;
 		$this->gEmail = $gEmail;
 		$this->gPasswd = $gPasswd;
+		$this->cli = $cli;
 
 		if (file_exists(__DIR__ . "/auth-$this->username.dat"))
 		{
@@ -272,6 +274,7 @@ class Snapchat extends SnapchatAgent {
 	 */
 	public function login($password, $force = false, $noOpenAppEvent = false)
 	{
+		if ($this->cli) echo "Logging in...";
 		$do = ($force && file_exists(__DIR__ . "/auth-$this->username.dat")) ? 1 : 0;
 
 		if(($do == 1) || (!(file_exists(__DIR__ . "/auth-$this->username.dat"))))
@@ -339,6 +342,7 @@ class Snapchat extends SnapchatAgent {
 		} else {
 				if (!$noOpenAppEvent) $this->openAppEvent();
 		}
+		if ($this->cli) echo " done!\n";
 	}
 
 	/**
@@ -878,6 +882,8 @@ class Snapchat extends SnapchatAgent {
 	 */
 	public function getSnaps($save = FALSE, $subdir = null)
 	{
+		if ($this->cli) echo "Getting Snaps...\n";
+
 		$updates = $this->getUpdates();
 		if(empty($updates))
 		{
@@ -924,7 +930,7 @@ class Snapchat extends SnapchatAgent {
 				$from = $snap->sender;
 				$time = $snap->sent;
 
-				echo "$current of $total\n";
+				if ($this->cli) echo "$current of $total\n";
 				$this->getMedia($id, $from, $time, $subdir);
 			}
 		}
@@ -1476,7 +1482,6 @@ class Snapchat extends SnapchatAgent {
 		return !empty($result->message);
 	}
 
-
 	/**
 	 * Downloads a snap.
 	 *
@@ -1515,6 +1520,7 @@ class Snapchat extends SnapchatAgent {
 		{
 			if(file_exists($file . $ext))
 			{
+				if ($this->cli) echo "  skipping...\n";
 				return false;
 			}
 		}
@@ -2194,6 +2200,8 @@ class Snapchat extends SnapchatAgent {
 
 	public function getStoriesByUsername($friend, $save = false)
 	{
+		if ($this->cli) echo "Getting stories for $friend...\n";
+
 		$stories = $this->getFriendStories();
 		$friendStories = array();
 
@@ -2220,7 +2228,7 @@ class Snapchat extends SnapchatAgent {
 				$mediaIV = $story->media_iv;
 				$timestamp = $story->timestamp;
 
-				echo "$current of $total\n";
+				if ($this->cli) echo "$current of $total\n";
 				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
@@ -2275,65 +2283,30 @@ class Snapchat extends SnapchatAgent {
 				{
 					mkdir($path, 0777, true);
 				}
+				$file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H-i-s", (int) ($timestamp / 1000)) . "-story-" . $media_id;
+				$extensions = array(".jpg", ".png", ".mp4", "");
+				foreach ($extensions as $ext)
+				{
+					if(file_exists($file . $ext))
+					{
+						if ($this->cli) echo "  skipping...\n"
+						return false;
+					}
+				}
 
 				if(is_array($result))
 				{
 					foreach ($result as &$value)
 					{
-				    $file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H-i-s", (int) ($timestamp / 1000)) . "-story-" . $media_id;
-
 						if(!file_exists($file))
 						{
-							file_put_contents($file, $value);
-							$finfo = finfo_open(FILEINFO_MIME_TYPE);
-							$finfo = finfo_file($finfo, $file);
-							switch($finfo)
-							{
-								case "image/jpeg":
-										$ext = ".jpg";
-										break;
-								case "image/png":
-										$ext = ".png";
-										break;
-								case "video/mp4";
-										$ext = ".mp4";
-										break;
-								default:
-										$ext = null;
-							}
-
-							if($ext != null)
-							{
-								rename($file, $file . $ext);
-							}
+							$this->writeToFile($file, $value);
 						}
 					}
 				}else{
-					$file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H-i-s", (int) ($timestamp / 1000)) . "-story-" . $media_id;
 					if(!file_exists($file))
 					{
-						file_put_contents($file, $result);
-						$finfo = finfo_open(FILEINFO_MIME_TYPE);
-						$finfo = finfo_file($finfo, $file);
-						switch($finfo)
-						{
-							case "image/jpeg":
-									$ext = ".jpg";
-									break;
-							case "image/png":
-									$ext = ".png";
-									break;
-							case "video/mp4";
-									$ext = ".mp4";
-									break;
-							default:
-									$ext = null;
-						}
-
-						if($ext != null)
-						{
-							rename($file, $file . $ext);
-						}
+						$this->writeToFile($file, $result);
 					}
 				}
 			}
