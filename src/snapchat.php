@@ -2276,7 +2276,7 @@ class Snapchat extends SnapchatAgent {
 			{
 				if(file_exists($file . $ext))
 				{
-					if ($this->cli) echo "  skipping...\n"
+					if ($this->cli) echo "  skipping...\n";
 					return false;
 				}
 			}
