@@ -924,7 +924,7 @@ class Snapchat extends SnapchatAgent {
 				$from = $snap->sender;
 				$time = $snap->sent;
 
-				echo "$current from %total\n";
+				echo "$current of $total\n";
 				$this->getMedia($id, $from, $time, $subdir);
 			}
 		}
@@ -1520,17 +1520,22 @@ class Snapchat extends SnapchatAgent {
 		{
 			if($from != null && $time != null)
 			{
-
-				if ($subdir == null) {
+				if ($subdir == null)
+				{
 					$subdir = $this->username;
 				}
-
-				$path = __DIR__ . DIRECTORY_SEPARATOR . "snaps" . DIRECTORY_SEPARATOR . $subdir . DIRECTORY_SEPARATOR .  $from;
+				$path = __DIR__ . DIRECTORY_SEPARATOR . "snaps" . DIRECTORY_SEPARATOR . $subdir;
 				if(!file_exists($path))
 				{
 					mkdir($path, 0777, true);
 				}
-				$file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H:i:s", (int) ($time / 1000));
+				$file = $path . DIRECTORY_SEPARATOR . "{$from}-" . date("Y-m-d H-i-s", (int) ($time / 1000));
+				if(file_exists($file))
+				{
+					echo "skipping...\n";
+					return;
+				}
+				
 				file_put_contents($file, $result);
 				$finfo = finfo_open(FILEINFO_MIME_TYPE);
 				$finfo = finfo_file($finfo, $file);
@@ -2197,7 +2202,7 @@ class Snapchat extends SnapchatAgent {
 				$mediaIV = $story->media_iv;
 				$timestamp = $story->timestamp;
 
-				echo "$current from $total\n";
+				echo "$current of $total\n";
 				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
@@ -2257,7 +2262,7 @@ class Snapchat extends SnapchatAgent {
 				{
 					foreach ($result as &$value)
 					{
-				    $file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H:i:s", (int) ($timestamp / 1000)) . "-story-" . $media_id;
+				    $file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H-i-s", (int) ($timestamp / 1000)) . "-story-" . $media_id;
 
 						if(!file_exists($file))
 						{
@@ -2286,7 +2291,7 @@ class Snapchat extends SnapchatAgent {
 						}
 					}
 				}else{
-					$file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H:i:s", (int) ($timestamp / 1000)) . "-story-" . $media_id;
+					$file = $path . DIRECTORY_SEPARATOR . date("Y-m-d H-i-s", (int) ($timestamp / 1000)) . "-story-" . $media_id;
 					if(!file_exists($file))
 					{
 						file_put_contents($file, $result);
