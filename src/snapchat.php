@@ -981,6 +981,60 @@ class Snapchat extends SnapchatAgent {
 	}
 
 	/**
+	 * Gets my stories.
+	 *
+	 * @param bool $force
+	 *   Forces an update even if there's fresh data in the cache. Defaults
+	 *   to FALSE.
+	 *
+	 * @return mixed
+	 *   An array of stories or FALSE on failure.
+	 */
+	function getMyStories($save = FALSE)
+	{
+
+		if ($this->cli) echo "Getting own stories...\n";
+
+		// Make sure we're logged in and have a valid access token.
+		if(!$this->auth_token || !$this->username)
+		{
+			return FALSE;
+		}
+
+		$updates = $this->getUpdates();
+		if(empty($updates))
+		{
+			return FALSE;
+		}
+
+		$myStories = $updates['data']->stories_response->my_stories;
+
+		if($save)
+		{
+			$total = count($myStories);
+			$current = 0;
+
+			foreach($myStories as $story)
+			{
+				$current += 1;
+
+				$story = $story->story;
+
+				$id = $story->media_id;
+				$from = $story->username;
+				$mediaKey = $story->media_key;
+				$mediaIV = $story->media_iv;
+				$timestamp = $story->timestamp;
+
+				if ($this->cli) echo "$current of $total\n";
+				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
+			}
+		}
+
+		return $myStories;
+	}
+
+	/**
 	 * Queries the friend-finding service.
 	 *
 	 * @todo
@@ -1117,7 +1171,7 @@ class Snapchat extends SnapchatAgent {
 		$friends = array();
 		$friends = $updates['data']->friends_response;
 		$friends = $friends->friends;
-
+		$friendList = array();
 		foreach($friends as $friend)
 		{
 				$friendList[] = $friend->name;
@@ -1143,6 +1197,7 @@ class Snapchat extends SnapchatAgent {
 
 		$friends = array();
 		$friends = $updates['data']->friends_response->added_friends;
+		$friendList = array();
 		foreach($friends as $friend)
 		{
 				$friendList[] = $friend->name;
@@ -1168,6 +1223,7 @@ class Snapchat extends SnapchatAgent {
 
 		$friends = array();
 		$friends = $updates['data']->friends_response->added_friends;
+		$unconfirmedList = array();
 		foreach($friends as $friend)
 		{
 				if ($friend->type == 1)
