@@ -959,14 +959,21 @@ class Snapchat extends SnapchatAgent {
 
 		if($save)
 		{
+			$total = count($stories);
+			$current = 0;
+
 			foreach($stories as $story)
 			{
+				$current += 1;
+
 				$id = $story->media_id;
 				$from = $story->username;
 				$mediaKey = $story->media_key;
 				$mediaIV = $story->media_iv;
+				$timestamp = $story->timestamp;
 
-				$this->getStory($id, $mediaKey, $mediaIV, $from, $save);
+				if ($this->cli) echo "$current of $total\n";
+				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
 
