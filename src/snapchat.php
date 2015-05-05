@@ -61,6 +61,8 @@ class Snapchat extends SnapchatAgent {
 	protected $gEmail;
 	protected $gPasswd;
 
+	protected $cache;
+
 	/**
 	 * Sets up some initial variables. If a username and password are passed in,
 	 * we attempt to log in. If a username and auth token are passed in, we'll
@@ -78,6 +80,8 @@ class Snapchat extends SnapchatAgent {
 		$this->gEmail = $gEmail;
 		$this->gPasswd = $gPasswd;
 		$this->cli = $cli;
+
+		$this->cache = new SnapchatCache;
 
 		if (file_exists(__DIR__ . "/auth-$this->username.dat"))
 		{
@@ -331,6 +335,7 @@ class Snapchat extends SnapchatAgent {
 				if(isset($result['data']->updates_response->logged) && $result['data']->updates_response->logged)
 				{
 					$this->auth_token = $result['data']->updates_response->auth_token;
+					$this->cache->set('updates', $result);
 					$this->device();
 
 					$authFile = fopen(__DIR__ . "/auth-$this->username.dat", "w");
@@ -781,8 +786,17 @@ class Snapchat extends SnapchatAgent {
 		return $result;
 	}
 
-	public function getConversations()
+	public function getConversations($force = false)
 	{
+		if(!$force)
+		{
+			$convos = $this->cache->get('convos');
+			if($convos)
+			{
+				return $convos;
+			}
+		}
+
 		$updates = $this->getUpdates();
 		$offset = end($updates['data']->conversations_response)->iter_token;
 		$convos = $updates['data']->conversations_response;
@@ -807,6 +821,7 @@ class Snapchat extends SnapchatAgent {
 			$last = json_decode(json_encode(end($result['data']->conversations_response)), true);
 			$offset = (array_key_exists("iter_token", $last)) ? $last['iter_token'] : "";
 		}
+		$this->cache->set('convos', $convos);
 		return $convos;
 	}
 
@@ -820,7 +835,7 @@ class Snapchat extends SnapchatAgent {
 	 * @return mixed
 	 *   The data returned by the service or FALSE on failure.
 	 */
-	public function getUpdates($force = TRUE)
+	public function getUpdates($force = false)
 	{
 		if(!$force)
 		{
@@ -852,12 +867,49 @@ class Snapchat extends SnapchatAgent {
 			$debug = $this->debug
 		);
 
-		if(!empty($result->updates_response))
+		if(!empty($result))
 		{
-			$this->auth_token = $result->updates_response->auth_token;
-			$this->cache->set('updates', $result->updates_response);
-			return $result->updates_response;
+			$this->auth_token = $result['data']->updates_response->auth_token;
+			$this->cache->set('updates', $result);
+			return $result;
 		}
+		else
+		{
+			echo "Request returned no data";
+			$result = $this->cache->get('updates', true);
+			if($result)
+			{
+				return $result;
+			}
+		}
+
+		return $result;
+	}
+
+	public function setLocation($lat, $long)
+	{
+		// Make sure we're logged in and have a valid access token.
+		if(!$this->auth_token || !$this->username)
+		{
+			return FALSE;
+		}
+
+		$timestamp = parent::timestamp();
+		$result = parent::post(
+			'/loq/loc_data',
+			array(
+				'lat' => $lat,
+				'long' => $long,
+				'timestamp' => $timestamp,
+				'username' => $this->username,
+			),
+			array(
+				$this->auth_token,
+				$timestamp,
+			),
+			$multipart = false,
+			$debug = $this->debug
+		);
 
 		return $result;
 	}
@@ -918,13 +970,78 @@ class Snapchat extends SnapchatAgent {
 				$from = $snap->sender;
 				$time = $snap->sent;
 
-				if ($this->cli) echo "$current of $total\n";
+				if ($this->cli) echo sprintf("%' 4d / %' 4d\n", $current, $total);
 				$this->getMedia($id, $from, $time, $subdir);
 			}
 		}
 
 		return $snaps;
 	}
+
+	public function getSnapsByUsername($friend, $save = false, $subdir = null)
+	{
+		if ($this->cli) echo "Getting Snaps for $friend...\n";
+
+		$updates = $this->getUpdates();
+		if(empty($updates))
+		{
+			return FALSE;
+		}
+
+		$snaps = array();
+		$conversations = $this->getConversations();
+	    foreach($conversations as &$conversation)
+	    {
+			$pending_received_snaps = $conversation->pending_received_snaps;
+			foreach($pending_received_snaps as &$snap)
+			{
+				if ($snap->sn == $friend) {
+					 $snaps[] = (object) array(
+						'id' => $snap->id,
+						'media_id' => empty($snap->c_id) ? FALSE : $snap->c_id,
+						'media_type' => $snap->m,
+						'time' => empty($snap->t) ? FALSE : $snap->t,
+						'sender' => empty($snap->sn) ? $this->username : $snap->sn,
+						'recipient' => empty($snap->rp) ? $this->username : $snap->rp,
+						'status' => $snap->st,
+						'screenshot_count' => empty($snap->c) ? 0 : $snap->c,
+						'sent' => $snap->sts,
+						'opened' => $snap->ts,
+						'broadcast' => empty($snap->broadcast) ? FALSE : (object)
+						array(
+							'url' => $snap->broadcast_url,
+							'action_text' => $snap->broadcast_action_text,
+							'hide_timer' => $snap->broadcast_hide_timer,
+						)
+					);
+				}
+			}
+		}
+
+		if($save)
+		{
+			$total = count($snaps);
+			$current = 0;
+			$files = array();
+			foreach($snaps as $snap)
+			{
+				$current += 1;
+
+				$id = $snap->id;
+				$from = $snap->sender;
+				$time = $snap->sent;
+
+				if ($this->cli) echo sprintf("%' 4d / %' 4d\n", $current, $total);
+				$files[] = $this->getMedia($id, $from, $time, $subdir);
+			}
+
+			return array("snaps" => $snaps,
+						 "files" => $files);
+		}
+		
+		return $snaps;
+	}
+
 
 	/**
 	 * Gets friends' stories.
@@ -972,7 +1089,7 @@ class Snapchat extends SnapchatAgent {
 				$mediaIV = $story->media_iv;
 				$timestamp = $story->timestamp;
 
-				if ($this->cli) echo "$current of $total\n";
+				if ($this->cli) echo sprintf("%' 4d / %' 4d\n", $current, $total);
 				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
@@ -992,8 +1109,6 @@ class Snapchat extends SnapchatAgent {
 	 */
 	function getMyStories($save = FALSE)
 	{
-
-		if ($this->cli) echo "Getting own stories...\n";
 
 		// Make sure we're logged in and have a valid access token.
 		if(!$this->auth_token || !$this->username)
@@ -1026,7 +1141,7 @@ class Snapchat extends SnapchatAgent {
 				$mediaIV = $story->media_iv;
 				$timestamp = $story->timestamp;
 
-				if ($this->cli) echo "$current of $total\n";
+				if ($this->cli) echo sprintf("%' 4d / %' 4d\n", $current, $total);
 				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
@@ -1174,6 +1289,7 @@ class Snapchat extends SnapchatAgent {
 		$friendList = array();
 		foreach($friends as $friend)
 		{
+			if (!property_exists($friend, 'is_shared_story'))
 				$friendList[] = $friend->name;
 		}
 
@@ -1229,7 +1345,7 @@ class Snapchat extends SnapchatAgent {
 				if ($friend->type == 1)
 				{
 					if (($friend->name != 'array') && ($friend->is_shared_story != 1))
-							$unconfirmedList[] = $friend->name;
+						$unconfirmedList[] = $friend->name;
 				}
 		}
 
@@ -1272,12 +1388,12 @@ class Snapchat extends SnapchatAgent {
 		);
 
 		// Sigh...
-		if(strpos($result["data"]->message, 'Sorry! Couldn\'t find') === 0)
-		{
-			return FALSE;
-		}
+		// if(strpos($result["data"]->message, 'Sorry! Couldn\'t find') === 0)
+		// {
+		// 	return FALSE;
+		// }
 
-		return !empty($result->message);
+		return $result['data']->message;
 	}
 
 	/**
@@ -1445,7 +1561,7 @@ class Snapchat extends SnapchatAgent {
 			$debug = $this->debug
 		);
 
-		return !empty($result->message);
+		return $result['data']->message;
 	}
 
 	/**
@@ -1484,7 +1600,7 @@ class Snapchat extends SnapchatAgent {
 			$debug = $this->debug
 		);
 
-		return !empty($result->message);
+		return $result['data']->message;
 	}
 
 	/**
@@ -1521,7 +1637,7 @@ class Snapchat extends SnapchatAgent {
 			$debug = $this->debug
 		);
 
-		return !empty($result->message);
+		return $result['data']->message;
 	}
 
 	/**
@@ -1558,7 +1674,7 @@ class Snapchat extends SnapchatAgent {
 			$debug = $this->debug
 		);
 
-		return !empty($result->message);
+		return $result['data']->message;
 	}
 
 	/**
@@ -1636,22 +1752,24 @@ class Snapchat extends SnapchatAgent {
 			}
 		}
 
+		$return = array();
+
 		if($from != null && $time != null)
 		{
 			if (is_array($result))
 			{
 				foreach ($result as $key => $value)
 				{
-					$this->writeToFile($file, $value);
+					$return[] = $this->writeToFile($file, $value);
 				}
 			}
 			else
 			{
-				$this->writeToFile($file, $result);
+				$return[] = $this->writeToFile($file, $result);
 			}
 		}
 
-		return $result;
+		return $return;
 	}
 
 	/**
@@ -1686,6 +1804,11 @@ class Snapchat extends SnapchatAgent {
 		if($ext != null)
 		{
 			rename($path, $path . $ext);
+			return $path . $ext;
+		}
+		else
+		{
+			return $path;
 		}
 	}
 
@@ -2307,7 +2430,7 @@ class Snapchat extends SnapchatAgent {
 				$mediaIV = $story->media_iv;
 				$timestamp = $story->timestamp;
 
-				if ($this->cli) echo "$current of $total\n";
+				if ($this->cli) echo sprintf("%' 4d / %' 4d\n", $current, $total);
 				$this->getStory($id, $mediaKey, $mediaIV, $from, $timestamp, $save);
 			}
 		}
@@ -2850,6 +2973,12 @@ class Snapchat extends SnapchatAgent {
 			$debug = $this->debug
 		);
 
+		$this->writeToFile("snaptag", $result);
+
 		return $result;
+	}
+
+	public function clearCache() {
+		$this->cache->clear();
 	}
 }
