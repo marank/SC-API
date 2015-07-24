@@ -336,20 +336,25 @@ class Snapchat extends SnapchatAgent {
 				fwrite($authFile, $this->auth_token);
 				fclose($authFile);
 			}
-
+			if ($this->cli) echo " done!\n";
 			return $result;
 		}
 		elseif (empty($password) && !empty($auth_token) && !(file_exists("auth/$this->username.dat")))
 		{
 			$this->auth_token = $auth_token;
 			if (!$noOpenAppEvent) $this->openAppEvent();
+			if ($this->cli) echo " done!\n";
 		}
 		elseif (empty($password) && empty($auth_token) && file_exists("auth/$this->username.dat"))
 		{
 			$this->auth_token = file_get_contents("auth/$this->username.dat");
 			if (!$noOpenAppEvent) $this->openAppEvent();
+			if ($this->cli) echo " done!\n";
 		}
-		if ($this->cli) echo " done!\n";
+		elseif (empty($password) && empty($auth_token) && !file_exists("auth/$this->username.dat"))
+		{
+			if ($this->cli) echo " Password or auth-token missing!\n";
+		}
 	}
 
 	/**
