@@ -82,11 +82,6 @@ class Snapchat extends SnapchatAgent {
 		$this->cli = $cli;
 
 		$this->cache = new SnapchatCache;
-
-		if (file_exists(__DIR__ . "/auth-$this->username.dat"))
-		{
-			$this->auth_token = file_get_contents(__DIR__ . "/auth-$this->username.dat");
-		}
 	}
 
 	public function getDeviceToken()
@@ -276,76 +271,83 @@ class Snapchat extends SnapchatAgent {
 	 *   The data returned by the service or FALSE if the request failed.
 	 *   Generally, returns the same result as self::getUpdates().
 	 */
-	public function login($password, $force = false, $noOpenAppEvent = false)
+	public function login($password="", $auth_token="", $noOpenAppEvent = false)
 	{
 		if ($this->cli) echo "Logging in...";
-		$do = ($force && file_exists(__DIR__ . "/auth-$this->username.dat")) ? 1 : 0;
 
-		if(($do == 1) || (!(file_exists(__DIR__ . "/auth-$this->username.dat"))))
+		if (!empty($password) && empty($auth_token) && !(file_exists("auth/$this->username.dat")))
 		{
-				$dtoken = $this->getDeviceToken();
+			$dtoken = $this->getDeviceToken();
 
-				if($dtoken['error'] == 1)
-				{
-						$return['message'] = "Failed to get new Device token set.";
-						return $return;
-				}
+			if($dtoken['error'] == 1)
+			{
+					$return['message'] = "Failed to get new Device token set.";
+					return $return;
+			}
 
-				$timestamp = parent::timestamp();
-				$req_token = parent::hash(parent::STATIC_TOKEN, $timestamp);
-				$string = $this->username . "|" . $password . "|" . $timestamp . "|" . $req_token;
+			$timestamp = parent::timestamp();
+			$req_token = parent::hash(parent::STATIC_TOKEN, $timestamp);
+			$string = $this->username . "|" . $password . "|" . $timestamp . "|" . $req_token;
 
-				$auth = $this->getAuthToken();
+			$auth = $this->getAuthToken();
 
-				if($auth['error'] == 1)
-				{
-						return $auth;
-				}
+			if($auth['error'] == 1)
+			{
+					return $auth;
+			}
 
-				$result = parent::post(
-					'/loq/login',
-					array(
-						'username' => $this->username,
-						'password' => $password,
-						'height' => 1280,
-						'width' => 720,
-						'max_video_height' => 640,
-						'max_video_width' => 480,
-						'dsig' => substr(hash_hmac('sha256', $string, $dtoken['data']->dtoken1v), 0, 20),
-						'dtoken1i' => $dtoken['data']->dtoken1i,
-						'ptoken' => "ie",
-						'timestamp' => $timestamp,
-						'req_token' => $req_token,
-					),
-					array(
-						parent::STATIC_TOKEN,
-						$timestamp,
-						$auth['auth']
-					),
-					$multipart = false,
-					$debug = $this->debug
-				);
+			$result = parent::post(
+				'/loq/login',
+				array(
+					'username' => $this->username,
+					'password' => $password,
+					'height' => 1280,
+					'width' => 720,
+					'max_video_height' => 640,
+					'max_video_width' => 480,
+					'dsig' => substr(hash_hmac('sha256', $string, $dtoken['data']->dtoken1v), 0, 20),
+					'dtoken1i' => $dtoken['data']->dtoken1i,
+					'ptoken' => "ie",
+					'timestamp' => $timestamp,
+					'req_token' => $req_token,
+				),
+				array(
+					parent::STATIC_TOKEN,
+					$timestamp,
+					$auth['auth']
+				),
+				$multipart = false,
+				$debug = $this->debug
+			);
 
 
-				if($result['error'] == 1)
-				{
-					return $result;
-				}
-
-				if(isset($result['data']->updates_response->logged) && $result['data']->updates_response->logged)
-				{
-					$this->auth_token = $result['data']->updates_response->auth_token;
-					$this->cache->set('updates', $result);
-					$this->device();
-
-					$authFile = fopen(__DIR__ . "/auth-$this->username.dat", "w");
-					fwrite($authFile, $this->auth_token);
-					fclose($authFile);
-				}
-
+			if($result['error'] == 1)
+			{
 				return $result;
-		} else {
-				if (!$noOpenAppEvent) $this->openAppEvent();
+			}
+
+			if(isset($result['data']->updates_response->logged) && $result['data']->updates_response->logged)
+			{
+				$this->auth_token = $result['data']->updates_response->auth_token;
+				$this->cache->set('updates', $result);
+				$this->device();
+
+				$authFile = fopen("auth/$this->username.dat", "w");
+				fwrite($authFile, $this->auth_token);
+				fclose($authFile);
+			}
+
+			return $result;
+		}
+		elseif (empty($password) && !empty($auth_token) && !(file_exists("auth/$this->username.dat")))
+		{
+			$this->auth_token = $auth_token;
+			if (!$noOpenAppEvent) $this->openAppEvent();
+		}
+		elseif (empty($password) && empty($auth_token) && file_exists("auth/$this->username.dat"))
+		{
+			$this->auth_token = file_get_contents("auth/$this->username.dat");
+			if (!$noOpenAppEvent) $this->openAppEvent();
 		}
 		if ($this->cli) echo " done!\n";
 	}
@@ -382,7 +384,7 @@ class Snapchat extends SnapchatAgent {
 		// Clear out the cache in case the instance is recycled.
 		$this->cache = NULL;
 
-		unlink(__DIR__ . "/auth-$this->username.dat");
+		unlink("auth/$this->username.dat");
 
 		return is_null($result);
 	}

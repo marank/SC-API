@@ -7,11 +7,13 @@
  */
 class SnapchatCache {
 
+	const CACHE_FILE = "cache.dat";
+
 	/**
 	 * The lifespan of the data in seconds. This might be able to be customized
 	 * at some point in the future.
 	 */
-	private static $_lifespan = 600;
+	const LIFESPAN = 600;
 
 	/**
 	 * The cache data itself.
@@ -19,8 +21,8 @@ class SnapchatCache {
 	private $_cache = array();
 
 	public function __construct() {
-		if (file_exists(__DIR__ . "/cache.dat")) {
-			$this->_cache = unserialize(file_get_contents(__DIR__ . "/cache.dat"));
+		if (file_exists(self::CACHE_FILE)) {
+			$this->_cache = unserialize(file_get_contents(self::CACHE_FILE));
 		}
 	}
 
@@ -40,7 +42,7 @@ class SnapchatCache {
 		}
 
 		// Second, check its freshness.
-		if (($this->_cache[$key]['time'] < time() - self::$_lifespan) && !$ignoreLifespan) {
+		if (($this->_cache[$key]['time'] < time() - self::LIFESPAN) && !$ignoreLifespan) {
 			//unset($this->_cache[$key]);
 			return FALSE;
 		}
@@ -61,7 +63,7 @@ class SnapchatCache {
 			'time' => time(),
 			'data' => $data,
 		);
-		file_put_contents(__DIR__ . "/cache.dat", serialize($this->_cache));
+		file_put_contents(self::CACHE_FILE, serialize($this->_cache));
 	}
 
 	/**
@@ -70,7 +72,7 @@ class SnapchatCache {
 	public function clear() {
 		unset($this->_cache);
 		$this->_cache = array();
-		file_put_contents(__DIR__ . "/cache.dat", serialize($this->_cache));
+		file_put_contents(self::CACHE_FILE, serialize($this->_cache));
 	}
 
 }
