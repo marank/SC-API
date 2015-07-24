@@ -11,7 +11,7 @@ abstract class SnapchatAgent {
 	 * Before updating this value, confirm
 	 * that the library requests everything in the same way as the app.
 	 */
-	const USER_AGENT = 'Snapchat/9.6.0.0 (HTC One; Android 4.4.2#302626.7#19; gzip)';
+	const USER_AGENT = 'Snapchat/9.3.1.0 (HTC One; Android 4.4.2#302626.7#19; gzip)';
 
 	/*
 	 * The API URL. We're using the /bq endpoint, the one that the iPhone
@@ -58,21 +58,12 @@ abstract class SnapchatAgent {
 		CURLOPT_USERAGENT => self::USER_AGENT,
 		CURLOPT_HTTPHEADER => array('Accept-Language: en', 'Accept-Locale: en_US'),
 	);
-	public $gauth = "";
+
 	public static $CURL_HEADERS = array(
 		'Accept-Language: en',
 		'Accept-Locale: en_US'
 	);
-	public function getGAuth(){
-		return (!empty($this->gauth) ? $this->gauth : "");
-	}
-	public function setGAuth($auth)
-	{
-		if (is_array($auth))
-				$this->gauth = $auth['auth'];
-		else
-				$this->gauth = $auth;
-	}
+
 	/**
 	 * Returns the current timestamp.
 	 *
@@ -366,7 +357,7 @@ abstract class SnapchatAgent {
 		}
 		else
 		{
-			$headers = array_merge(self::$CURL_HEADERS, array("X-Snapchat-Client-Auth-Token: Bearer ". $this->gauth));
+			$headers = self::$CURL_HEADERS;
 		}
 
 		if($multipart)
