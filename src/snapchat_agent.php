@@ -58,12 +58,21 @@ abstract class SnapchatAgent {
 		CURLOPT_USERAGENT => self::USER_AGENT,
 		CURLOPT_HTTPHEADER => array('Accept-Language: en', 'Accept-Locale: en_US'),
 	);
-
+	public $gauth = "";
 	public static $CURL_HEADERS = array(
 		'Accept-Language: en',
 		'Accept-Locale: en_US'
 	);
-
+	public function getGAuth(){
+		return (!empty($this->gauth) ? $this->gauth : "");
+	}
+	public function setGAuth($auth)
+	{
+		if (is_array($auth))
+				$this->gauth = $auth['auth'];
+		else
+				$this->gauth = $auth;
+	}
 	/**
 	 * Returns the current timestamp.
 	 *
@@ -349,7 +358,7 @@ abstract class SnapchatAgent {
 			curl_setopt($ch, CURLINFO_HEADER_OUT, true);
 		}
 
-		if($endpoint == "/loq/login")
+		if($endpoint == "/loq/login" || $endpoint == "/loq/register_username")
 		{
 			$headers = array_merge(self::$CURL_HEADERS, array(
 				"X-Snapchat-Client-Auth-Token: Bearer {$params[2]}",
@@ -357,7 +366,7 @@ abstract class SnapchatAgent {
 		}
 		else
 		{
-			$headers = self::$CURL_HEADERS;
+			$headers = array_merge(self::$CURL_HEADERS, array("X-Snapchat-Client-Auth-Token: Bearer ". $this->gauth));
 		}
 
 		if($multipart)
@@ -387,6 +396,12 @@ abstract class SnapchatAgent {
 		curl_setopt($ch, CURLOPT_PROXY, $this->proxyServer);
 		$result = curl_exec($ch);
 
+		// If cURL doesn't have a bundle of root certificates handy, we provide
+		// ours (see http://curl.haxx.se/docs/sslcerts.html).
+		if (curl_errno($ch) == 60) {
+			curl_setopt($ch, CURLOPT_CAINFO, dirname(__FILE__) . '/ca_bundle.crt');
+			$result = curl_exec($ch);
+		}
 
 		if(strlen($result) > 0) //make sure curl worked. if not, keep going
 		{
@@ -401,17 +416,25 @@ abstract class SnapchatAgent {
 					echo "\nSent Request info: " .print_r($info['request_header'], true). "\n";
 			if(is_array($data))
 			{
-				echo 'DATA: ' . print_r($data) . "\n";
+					if ($multipart)
+				  		echo 'DATA: ' . strlen($data) . " byte data\n";
+					else
+							echo 'DATA: ' . print_r($data) . "\n";
 			}
 			else
 			{
-				echo 'DATA: ' . $data . "\n";
+				if ($multipart)
+						echo 'DATA: ' . strlen($data) . " byte data\n";
+				else
+						echo 'DATA: ' . $data . "\n";
 			}
 
 			if($endpoint == "/loq/login" || $endpoint == "/all_updates")
 			{
 				$jsonResult = json_decode($result);
 				echo 'RESULT: ' . print_r($jsonResult) . "\n";
+				if (property_exists($jsonResult, "status") && $jsonResult->status == '-103')
+						exit();
 			}
 			else
 			{
@@ -442,13 +465,6 @@ abstract class SnapchatAgent {
 				fclose($headerBuff);
 				return "captcha.zip";
 			}
-		}
-
-		// If cURL doesn't have a bundle of root certificates handy, we provide
-		// ours (see http://curl.haxx.se/docs/sslcerts.html).
-		if (curl_errno($ch) == 60) {
-			curl_setopt($ch, CURLOPT_CAINFO, dirname(__FILE__) . '/ca_bundle.crt');
-			$result = curl_exec($ch);
 		}
 
 		$gi = curl_getinfo($ch);

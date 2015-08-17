@@ -1,10 +1,14 @@
-# Snap API
+# SC API [![Latest Stable Version](https://poser.pugx.org/mgp25/snapapi/v/stable)](https://packagist.org/packages/mgp25/snapapi) [![Total Downloads](https://poser.pugx.org/mgp25/snapapi/downloads)](https://packagist.org/packages/mgp25/snapapi) [![License](https://poser.pugx.org/mgp25/snapapi/license)](https://packagist.org/packages/mgp25/snapapi)
 
-Interface to Snapchat
-
-**Read the [wiki](https://github.com/mgp25/Snap-API/wiki)** and previous issues before opening a new one! Maybe your issue is already answered.
+**Read the [wiki](https://github.com/mgp25/SC-API/wiki)** and previous issues before opening a new one! Maybe your issue is already answered.
 
 ----------
+
+### Installation
+
+```sh
+composer require mgp25/snapapi
+```
 
 ### Special thanks
 
@@ -16,7 +20,7 @@ Interface to Snapchat
 
 Based on [JorgenPhi](https://github.com/JorgenPhi/php-snapchat) code.
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mgp25/Snap-API?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mgp25/SC-API)
 
 [![Paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=QZY4JX3P7278Y)
 
@@ -24,3 +28,7 @@ Based on [JorgenPhi](https://github.com/JorgenPhi/php-snapchat) code.
 
 ## License
 MIT
+
+## Legal
+
+This code is in no way affiliated with, authorized, maintained, sponsored or endorsed by Snapchat or any of its affiliates or subsidiaries. This is an independent and unofficial API. Use at your own risk.
