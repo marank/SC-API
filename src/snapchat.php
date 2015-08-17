@@ -91,8 +91,8 @@ class Snapchat extends SnapchatAgent {
 
 		$this->cache = new SnapchatCache;
 
-		if(file_exists(__DIR__ . DIRECTORY_SEPARATOR . self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat")){
-			$this->totArray = unserialize(file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat"));
+		if(file_exists(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat")){
+			$this->totArray = unserialize(file_get_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat"));
 		}
 		if(array_key_exists($this->username, $this->totArray[0])){
 			$this->auth_token = $this->totArray[0][$this->username];
@@ -347,7 +347,7 @@ class Snapchat extends SnapchatAgent {
 	 *   The data returned by the service or FALSE if the request failed.
 	 *   Generally, returns the same result as self::getUpdates().
 	 */
-	public function login($password="", $auth_token="", $noOpenAppEvent = false)
+	public function login($password="", $auth_token="", $noOpenAppEvent = false, $force = false)
 	{
 		if ($this->cli) echo "Logging in...";
 		$do = ($force && array_key_exists($this->username,$this->totArray[0])) ? 1 : 0;
@@ -365,16 +365,18 @@ class Snapchat extends SnapchatAgent {
 			$timestamp = parent::timestamp();
 			$req_token = parent::hash(parent::STATIC_TOKEN, $timestamp);
 			$string = $this->username . "|" . $password . "|" . $timestamp . "|" . $req_token;
-				$auth = $this->getAuthToken();
-				$this->totArray[1][$this->username] = array($auth, time()+(55*60));
-				file_put_contents(__DIR__ . DIRECTORY_SEPARATOR . self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
-				if($auth['error'] == 1)
-				{
-						return $auth;
-				}
-				parent::setGAuth($auth);
-        $attestation = $this->getAttestation($password, $timestamp);
+			$auth = $this->getAuthToken();
+			$this->totArray[1][$this->username] = array($auth, time()+(55*60));
+			file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
+			if($auth['error'] == 1)
+			{
+					return $auth;
+			}
+			parent::setGAuth($auth);
 
+			if ($auth_token == "")
+			{
+				$attestation = $this->getAttestation($password, $timestamp);
 				$result = parent::post(
 					'/loq/login',
 					array(
@@ -402,20 +404,29 @@ class Snapchat extends SnapchatAgent {
 					$debug = $this->debug
 				);
 
+				if($result['error'] == 1)
+				{
+					return $result;
+				}
 
-			if($result['error'] == 1)
-			{
-				return $result;
-			}
 				if(isset($result['data']->updates_response->logged) && $result['data']->updates_response->logged)
 				{
 					$this->auth_token = $result['data']->updates_response->auth_token;
-					$this->device();
-					$this->totArray[0][$this->username] = $this->auth_token;
-					file_put_contents(__DIR__ . DIRECTORY_SEPARATOR . self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
+					//$this->device();
 				}
+			}
+			else
+			{
+				$this->auth_token = $auth_token;
+				//$this->device();
+				$result = $this->getUpdates();
+			}
 
-				return $result;
+			$this->totArray[0][$this->username] = $this->auth_token;
+			file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
+
+
+			return $result;
 		}
 		else
 		{
@@ -457,7 +468,7 @@ class Snapchat extends SnapchatAgent {
 		$this->cache = NULL;
 		unset($this->totArray[0][$this->username]);
 		unset($this->totArray[1][$this->username]);
-		file_put_contents(__DIR__ . DIRECTORY_SEPARATOR . self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat",serialize($this->totArray));
+		file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat",serialize($this->totArray));
 		return is_null($result);
 	}
 
@@ -530,7 +541,7 @@ class Snapchat extends SnapchatAgent {
 
 		$auth = $this->getAuthToken();
 		$this->totArray[1][$this->username] = array($auth, time()+(55*60));
-		file_put_contents(__DIR__ . DIRECTORY_SEPARATOR . self::DATA_FOLDER . DIRECTORY_SEPARATOR . "auth-$this->username.dat", serialize($this->totArray));
+		file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
 		if($auth['error'] == 1)
 		{
 			return $auth;
@@ -992,7 +1003,7 @@ class Snapchat extends SnapchatAgent {
 			$a = $this->getAuthToken();
 			parent::setGAuth($a);
 			$this->totArray[1][$this->username] = array($a, time()+(55*60));
-			file_put_contents(__DIR__ . DIRECTORY_SEPARATOR . self::DATA_FOLDER . DIRECTORY_SEPARATOR . "auth-$this->username.dat",serialize($this->totArray));
+			file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat",serialize($this->totArray));
 		}
 		$timestamp = parent::timestamp();
 		$result = parent::post(
