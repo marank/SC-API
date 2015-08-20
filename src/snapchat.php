@@ -56,8 +56,6 @@ class Snapchat extends SnapchatAgent {
 	const PRIVACY_EVERYONE = 0;
 	const PRIVACY_FRIENDS = 1;
 
-	const DATA_FOLDER = 'auth';
-
 	protected $auth_token;
 	protected $chat_auth_token;
 	protected $username;
@@ -65,6 +63,7 @@ class Snapchat extends SnapchatAgent {
 	protected $cli;
 	protected $gEmail;
 	protected $gPasswd;
+	protected $auth_data_folder;
 	protected $totArray = array(array(),array());
 
 	protected $cache;
@@ -81,18 +80,19 @@ class Snapchat extends SnapchatAgent {
 	 * @param string $gPasswd
 	 *   The Google password used for this gEmail.
 	 */
-	public function __construct($username = NULL, $gEmail, $gPasswd, $debug = FALSE, $cli = false)
+	public function __construct($username, $gEmail, $gPasswd, $auth_data_folder = "auth", $debug = false, $cli = false)
 	{
 		$this->username = $username;
 		$this->debug = $debug;
 		$this->gEmail = $gEmail;
 		$this->gPasswd = $gPasswd;
 		$this->cli = $cli;
+		$this->auth_data_folder = $auth_data_folder;
 
 		$this->cache = new SnapchatCache;
 
-		if(file_exists(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat")){
-			$this->totArray = unserialize(file_get_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat"));
+		if(file_exists($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat")){
+			$this->totArray = unserialize(file_get_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat"));
 		}
 		if(array_key_exists($this->username, $this->totArray[0])){
 			$this->auth_token = $this->totArray[0][$this->username];
@@ -367,7 +367,7 @@ class Snapchat extends SnapchatAgent {
 			$string = $this->username . "|" . $password . "|" . $timestamp . "|" . $req_token;
 			$auth = $this->getAuthToken();
 			$this->totArray[1][$this->username] = array($auth, time()+(55*60));
-			file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
+			file_put_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
 			if($auth['error'] == 1)
 			{
 					return $auth;
@@ -423,7 +423,7 @@ class Snapchat extends SnapchatAgent {
 			}
 
 			$this->totArray[0][$this->username] = $this->auth_token;
-			file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
+			file_put_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
 
 
 			return $result;
@@ -468,7 +468,7 @@ class Snapchat extends SnapchatAgent {
 		$this->cache = NULL;
 		unset($this->totArray[0][$this->username]);
 		unset($this->totArray[1][$this->username]);
-		file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat",serialize($this->totArray));
+		file_put_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat",serialize($this->totArray));
 		return is_null($result);
 	}
 
@@ -541,7 +541,7 @@ class Snapchat extends SnapchatAgent {
 
 		$auth = $this->getAuthToken();
 		$this->totArray[1][$this->username] = array($auth, time()+(55*60));
-		file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
+		file_put_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
 		if($auth['error'] == 1)
 		{
 			return $auth;
@@ -1003,7 +1003,7 @@ class Snapchat extends SnapchatAgent {
 			$a = $this->getAuthToken();
 			parent::setGAuth($a);
 			$this->totArray[1][$this->username] = array($a, time()+(55*60));
-			file_put_contents(self::DATA_FOLDER . DIRECTORY_SEPARATOR . "$this->username.dat",serialize($this->totArray));
+			file_put_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat",serialize($this->totArray));
 		}
 		$timestamp = parent::timestamp();
 		$result = parent::post(
@@ -1348,7 +1348,7 @@ class Snapchat extends SnapchatAgent {
 	 * @return mixed
 	 *   An array of friends
 	 */
-	public function getFriends()
+	public function getFriends($detailed = false)
 	{
 		$updates = $this->getUpdates();
 
@@ -1358,13 +1358,21 @@ class Snapchat extends SnapchatAgent {
 		}
 
 		$friends = array();
-		$friends = $updates['data']->friends_response;
-		$friends = $friends->friends;
+		$friends = $updates['data']->friends_response->friends;
 		$friendList = array();
 		foreach($friends as $friend)
 		{
 			if (!property_exists($friend, 'is_shared_story'))
-				$friendList[] = $friend->name;
+			{
+				if ($detailed)
+				{
+					$friendList[$friend->name] = $friend;
+				}
+				else
+				{
+					$friendList[] = $friend->name;
+				}
+			}
 		}
 
 		return $friendList;
@@ -1376,7 +1384,7 @@ class Snapchat extends SnapchatAgent {
 	 * @return mixed
 	 *   An array of friends or FALSE on failure.
 	 */
-	public function getAddedFriends()
+	public function getAddedFriends($detailed = false)
 	{
 		$updates = $this->getUpdates();
 
@@ -1390,7 +1398,14 @@ class Snapchat extends SnapchatAgent {
 		$friendList = array();
 		foreach($friends as $friend)
 		{
-			$friendList[] = $friend->name;
+			if ($detailed)
+			{
+				$friendList[$friend->name] = $friend;
+			}
+			else
+			{
+				$friendList[] = $friend->name;
+			}
 		}
 
 		return $friendList;
