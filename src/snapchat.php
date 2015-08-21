@@ -349,12 +349,13 @@ class Snapchat extends SnapchatAgent {
 	 */
 	public function login($password="", $auth_token="", $noOpenAppEvent = false, $force = false)
 	{
-		if ($this->cli) echo "Logging in...";
 		$do = ($force && array_key_exists($this->username,$this->totArray[0])) ? 1 : 0;
 
 		if(($do == 1) || (!(array_key_exists($this->username,$this->totArray[0]))) || (!(array_key_exists($this->username,$this->totArray[1]))))
 		{
+			if ($this->cli) echo "Fetching device token... ";
 			$dtoken = $this->getDeviceToken();
+			if ($this->cli) echo "done!\n";
 
 			if($dtoken['error'] == 1)
 			{
@@ -365,17 +366,22 @@ class Snapchat extends SnapchatAgent {
 			$timestamp = parent::timestamp();
 			$req_token = parent::hash(parent::STATIC_TOKEN, $timestamp);
 			$string = $this->username . "|" . $password . "|" . $timestamp . "|" . $req_token;
+
+			if ($this->cli) echo "Fetching gAuth token... ";
 			$auth = $this->getAuthToken();
+			if ($this->cli) echo "done!\n";
+
 			$this->totArray[1][$this->username] = array($auth, time()+(55*60));
 			file_put_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
 			if($auth['error'] == 1)
 			{
-					return $auth;
+				return $auth;
 			}
 			parent::setGAuth($auth);
 
 			if ($auth_token == "")
 			{
+				if ($this->cli) echo "Fetching attestation and logging in to snapchat...";
 				$attestation = $this->getAttestation($password, $timestamp);
 				$result = parent::post(
 					'/loq/login',
@@ -414,6 +420,7 @@ class Snapchat extends SnapchatAgent {
 					$this->auth_token = $result['data']->updates_response->auth_token;
 					//$this->device();
 				}
+				if ($this->cli) echo "done!\n";
 			}
 			else
 			{
@@ -425,6 +432,7 @@ class Snapchat extends SnapchatAgent {
 			$this->totArray[0][$this->username] = $this->auth_token;
 			file_put_contents($this->auth_data_folder . DIRECTORY_SEPARATOR . "$this->username.dat", serialize($this->totArray));
 
+			if ($this->cli) echo "Current auth_token: $this->auth_token\n";
 
 			return $result;
 		}
@@ -910,7 +918,7 @@ class Snapchat extends SnapchatAgent {
 
 		while(strlen($offset) > 0){
 			$count++;
-			echo "Fetching $offset... ($count)\n";
+			echo "Fetching conversations $offset... ($count)\n";
 			$timestamp = parent::timestamp();
 			$result = parent::post(
 				'/loq/conversations',
@@ -947,15 +955,14 @@ class Snapchat extends SnapchatAgent {
 	 */
 	public function getUpdates($force = false)
 	{
-		echo "Fetching updates...\n";
-
 		if(!$force) {
 			$result = $this->cache->get('updates');
 			if($result) {
-				echo " Using cached data!\n";
 				return $result;
 			}
 		}
+
+		echo "Fetching updates...\n";
 
 		// Make sure we're logged in and have a valid access token.
 		if(!$this->auth_token || !$this->username) {
@@ -1462,7 +1469,7 @@ class Snapchat extends SnapchatAgent {
 		foreach($batches as $batch)
 		{
 			$current++;
-			echo sprintf("Processing batch %' 4d / %' 4d\r", $current, $total);
+			echo sprintf("Fetching scores batch %' 4d / %' 4d\r", $current, $total);
 
 			$timestamp = parent::timestamp();
 			$result = parent::post(
