@@ -2222,8 +2222,6 @@ class Snapchat extends SnapchatAgent {
 					return $snap;
 			}
 		}
-		else
-			return false;
 	}
 
 	/**
