@@ -11,7 +11,7 @@ abstract class SnapchatAgent {
 	 * Before updating this value, confirm
 	 * that the library requests everything in the same way as the app.
 	 */
-	const USER_AGENT = 'Snapchat/9.10.0.0 (HTC One; Android 4.4.2#302626.7#19; gzip)';
+	const USER_AGENT = 'Snapchat/9.14.2.0 (HTC One; Android 4.4.2#302626.7#19; gzip)';
 
 	/*
 	 * The API URL. We're using the /bq endpoint, the one that the iPhone
@@ -362,6 +362,7 @@ abstract class SnapchatAgent {
 		{
 			$headers = array_merge(self::$CURL_HEADERS, array(
 				"X-Snapchat-Client-Auth-Token: Bearer {$params[2]}",
+				"X-Snapchat-Client-Auth: {$params[3]}",
 				"Accept-Encoding: gzip"));
 		}
 		else
@@ -431,6 +432,12 @@ abstract class SnapchatAgent {
 
 			if($endpoint == "/loq/login" || $endpoint == "/all_updates")
 			{
+				if (strpos($result,'401 UNAUTHORIZED') !== false)
+				{
+					echo "\nRESULT: 401 UNAUTHORIZED\n";
+					exit();
+				}
+
 				$jsonResult = json_decode($result);
 				echo 'RESULT: ' . print_r($jsonResult) . "\n";
 				if (property_exists($jsonResult, "status") && $jsonResult->status == '-103')
@@ -450,21 +457,21 @@ abstract class SnapchatAgent {
 					exit();
 				}
 			}
+		}
 
-			if($endpoint == "/bq/get_captcha")
+		if($endpoint == "/bq/get_captcha")
+		{
+			file_put_contents(__DIR__."/captcha.zip", $result);
+			rewind($headerBuff);
+			$headers = stream_get_contents($headerBuff);
+			if(preg_match('/^Content-Disposition: .*?filename=(?<f>[^\s]+|\x22[^\x22]+\x22)\x3B?.*$/m', $headers, $matches))
 			{
-				file_put_contents(__DIR__."/captcha.zip", $result);
-				rewind($headerBuff);
-				$headers = stream_get_contents($headerBuff);
-				if(preg_match('/^Content-Disposition: .*?filename=(?<f>[^\s]+|\x22[^\x22]+\x22)\x3B?.*$/m', $headers, $matches))
-				{
-					$filename = trim($matches['f'],' ";');
-					rename(__DIR__."/captcha.zip", __DIR__."/{$filename}");
-					return $filename;
-				}
-				fclose($headerBuff);
-				return "captcha.zip";
+				$filename = trim($matches['f'],' ";');
+				rename(__DIR__."/captcha.zip", __DIR__."/{$filename}");
+				return $filename;
 			}
+			fclose($headerBuff);
+			return "captcha.zip";
 		}
 
 		$gi = curl_getinfo($ch);
