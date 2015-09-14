@@ -2630,16 +2630,17 @@ class Snapchat extends SnapchatAgent {
 		}
 
 		// Retrieve encrypted story and decrypt.
+		$request_timestamp = parent::timestamp();
 		$blob = parent::post(
 			'/bq/auth_story_blob',
 			array(
 				'story_id' => $media_id,
-				'timestamp' => $timestamp,
+				'timestamp' => $request_timestamp,
 				'username' => $this->username,
 			),
 			array(
 				$this->auth_token,
-				$timestamp,
+				$request_timestamp,
 			),
 			$multipart = false,
 			$debug = $this->debug
@@ -2718,7 +2719,21 @@ class Snapchat extends SnapchatAgent {
 		}
 
 		// Retrieve encrypted story and decrypt.
-		$blob = parent::get('/bq/story_thumbnail?story_id=' . $media_id);
+		$timestamp = parent::timestamp();
+		$blob = parent::post(
+			'/bq/auth_story_thumbnail',
+			array(
+				'story_id' => $media_id,
+				'timestamp' => $timestamp,
+				'username' => $this->username,
+			),
+			array(
+				$this->auth_token,
+				$timestamp,
+			),
+			$multipart = false,
+			$debug = $this->debug
+		);
 
 		if(!empty($blob))
 		{

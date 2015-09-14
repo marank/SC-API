@@ -502,7 +502,16 @@ abstract class SnapchatAgent {
 
 		$return['error'] = 0;
 
-		if($endpoint == '/ph/blob' || $endpoint == '/bq/blob' || $endpoint == '/bq/auth_story_blob' || $endpoint == "/bq/snaptag_download" || $endpoint == '/bq/chat_media')
+		$blob_endpoints = [
+			'/ph/blob',
+			'/bq/blob',
+			'/bq/auth_story_blob',
+			'/bq/auth_story_thumbnail',
+			'/bq/snaptag_download',
+			'/bq/chat_media'
+		];
+
+		if(in_array($endpoint, $blob_endpoints))
 		{
 			$return['data'] = $result;
 			return $result;
